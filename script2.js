@@ -3,6 +3,15 @@ var canvas = document.getElementById("background");
 var ctx = canvas.getContext("2d");
 const GAME_WIDTH = 980;
 const GAME_HEIGHT = 800;
+ctx.imageSmoothingEnabled = false;
+
+
+var game = new Game();
+
+function init() {
+    if (game.init())
+        game.start();
+}
 
 
 /*
@@ -45,6 +54,103 @@ var imageRepo = new function () {
     this.bullet.src = "images/bulletPlayer.png";
 
 
+}
+
+/* ------ ABSTRACT OBJECT ------
+ * This is an abtract object which means that all
+ * the other objects will inherit from it. This means not duplicating code
+ * for multiple objects that require the same variables and functions.
+ */
+function Drawable() {
+    this.init = function (x, y, width, height) {
+        /* init allows me to set the x and y position of an object
+         * once it has been created. Defines the speed of an object.
+         */
+        //default variables
+
+        this.x = x;
+        this.y = y;
+       
+        this.width = width;
+        this.height = height;
+    }
+    this.speed = 0;
+    this.canvasWidth = 0;
+    this.canvasHeight = 0;
+
+    this.draw = function () {
+
+    };
+    this.move = function(){
+
+    };
+}
+
+
+/* ------ GAME OBJECT ------
+ * game object that will hold all the objects and data for the game
+ */
+function Game() {
+    // gets the canvas and context information and sets up all the game objects
+    this.init = function () {
+        // get the canvas elements
+        this.bgCanvas = document.getElementById("background");
+        this.shipCanvas = document.getElementById("ship");
+        this.mainCanvas = document.getElementById("main");
+        // checks to see if the canvas is supported
+        if (this.bgCanvas.getContext) {
+
+            this.bgContext = this.bgCanvas.getContext("2d");
+            this.shipContext = this.shipCanvas.getContext("2d");
+            this.mainContext = this.mainCanvas.getContext("2d");
+            // initialize objects to contain their conetext and canvas information
+            Background.prototype.context = this.bgContext;
+            Background.prototype.canvasWidth = this.bgCanvas.width;
+            Background.prototype.canvasHeight = this.bgCanvas.height;
+
+            Ship.prototype.context = this.shipContext;
+            Ship.prototype.canvasWidth = this.shipCanvas.width;
+            Ship.prototype.canvasHeight = this.shipCanvas.height;
+
+            Bullet.prototype.context = this.mainContext;
+            Bullet.prototype.canvasWidth = this.mainCanvas.width;
+            Bullet.prototype.canvasHeight = this.mainCanvas.height;
+            //initialize the background object
+            this.background = new Background();
+            this.background.init(0, 0); //set the draw point to 0,0
+            //initialize the ship object
+            this.ship = new Ship();
+            //set the ship to start middle bottom
+            var shipStartX = this.shipCanvas.width/2 - imageRepo.spaceship.width;
+            var shipStartY = this.shipCanvas.height/4*3 + imageRepo.spaceship.height*2;
+            this.ship.init(shipStartX, shipStartY, 
+                imageRepo.spaceship.width, imageRepo.spaceship.height);
+
+            return true;
+        } else {
+            return false;
+        }
+    };
+
+    // start the animation loop
+    this.start = function () {
+        this.ship.draw();
+        animate();
+        
+    }
+};
+
+
+/* ------ ANIMATION LOOP ------
+ * Global function
+ * The animation loop calls teh requestAnimationFrame to optimize the game loop.
+ * Draws all the game objects
+ */
+function animate() {
+    requestAnimFrame(animate);
+    game.background.draw();
+    game.ship.move();
+    game.ship.bulletPool.animate();
 }
 /// ------ OBJECT POOL ------
 /* 
@@ -115,18 +221,18 @@ function Pool(maxSize) {
 // ------ USER INPUT ------
 KEY_CODES = {
     32: 'space',
-    37: 'left',
-    38: 'up',
-    39: 'right',
-    40: 'down',
+    65: 'left',
+    87: 'up',
+    68: 'right',
+    83: 'down',
 }
 
-KEY_STATUS = [];
+KEY_STATUS = {};
 for (code in KEY_CODES) {
     KEY_STATUS[KEY_CODES[code]] = false;
 }
 
-document.onkeydown = function(e){
+document.onkeydown = function(e) {
     var keyCode = (e.keyCode) ? e.keyCode : e.charCode;
     if (KEY_CODES[keyCode]) {
         e.preventDefault();
@@ -135,11 +241,11 @@ document.onkeydown = function(e){
 }
 
 
-document.onkeyup = function(e){
-    var keyCode = (ekeyCode) ? e.keyCode : e.charCode;
+document.onkeyup = function(e) {
+    var keyCode = (e.keyCode) ? e.keyCode : e.charCode;
     if (KEY_CODES[keyCode]) {
         e.preventDefault();
-        KEY_STATUS[KEY_CODES[keyCodes]] = false;
+        KEY_STATUS[KEY_CODES[keyCode]] = false;
     }
 }
 
@@ -154,15 +260,18 @@ function Ship() {
     this.speed = 3;
     this.bulletPool = new Pool(30);
     this.bulletPool.init();
+
     var fireRate = 15;
     var counter = 0;
+
     this.draw = function () {
         this.context.drawImage(imageRepo.spaceship, this.x, this.y);
     };
     this.move = function () {
         counter++;
         //determine if the action is a move action
-        if (KEY_STATUS.left || KEY_STATUS.right || KEY_STATUS.down || KEY_STATUS.up) {
+        if (KEY_STATUS.left || KEY_STATUS.right || 
+            KEY_STATUS.down || KEY_STATUS.up) {
             // The ship moved so, erase the current image and redraw to new location
             this.context.clearRect(this.x, this.y, this.width, this.height);
             // Update x and y position according to the direction of movement and redraw the ship.
@@ -173,15 +282,15 @@ function Ship() {
                     this.x = 0;
             } else if (KEY_STATUS.right) {
                 this.x += this.speed
-                if (this.x <= this.canvasWidth - this.width)
+                if (this.x >= this.canvasWidth - this.width)
                     this.x = this.canvasWidth - this.width;
-            } else if (KEY_STATUS.down) {
+            } else if (KEY_STATUS.up) {
                 this.y -= this.speed
                 if (this.y <= this.canvasHeight / 4 * 3)
                     this.y = this.canvasHeight / 4 * 3;
-            } else if (KEY_STATUS.up) {
+            } else if (KEY_STATUS.down) {
                 this.y += this.speed
-                if (this.y <= this.canvasHeight - this.height)
+                if (this.y >= this.canvasHeight - this.height)
                     this.y = this.canvasHeight - this.height;
             }
             //finish by redrawing the ship
@@ -209,7 +318,7 @@ Ship.prototype = new Drawable();
 function Bullet() {
     this.alive = false; // is true if the bullet is currently in use
     // sets the bullet value
-    this.spawn = function (x, y, speed) {
+    this.spawn = function(x, y, speed) {
         this.x = x;
         this.y = y;
         this.speed = speed;
@@ -220,7 +329,7 @@ function Bullet() {
      * returns true if the bullet has moved off the screen, indicating that
      * the bullet can now be cleared by the pool, if not then the bullet is drawn
      */
-    this.draw = function () {
+    this.draw = function() {
         this.context.clearRect(this.x, this.y, this.width, this.height);
         this.y -= this.speed;
         if (this.y <= 0 - this.height) {
@@ -243,28 +352,6 @@ Bullet.prototype = new Drawable();
 
 
 
-/* ------ ABSTRACT OBJECT ------
- * This is an abtract object which means that all
- * the other objects will inherit from it. This means not duplicating code
- * for multiple objects that require the same variables and functions.
- */
-function Drawable() {
-    this.init = function (x, y, width, height) {
-        /* init allows me to set the x and y position of an object
-         * once it has been created. Defines the speed of an object.
-         */
-        //default variables
-
-        this.x = x;
-        this.y = y;
-    }
-    this.speed = 0;
-    this.width = width;
-    this.height = height;
-    this.draw = function () {
-
-    };
-}
 
 /* ------ BACKGROUND OBJECT ------
  * this function is used to create a background object that will become a child
@@ -292,56 +379,6 @@ function Background() {
 Background.prototype = new Drawable();
 
 
-/* ------ GAME OBJECT ------
- * game object that will hold all the objects and data for the game
- */
-function Game() {
-    // gets the canvas and context information and sets up all the game objects
-    this.init = function () {
-        // get the canvas elements
-        this.bgCanvas = document.getElementById("background");
-        this.shipCanvas = document.getElementById("ship");
-        this.mainCanvas = document.getElementById("main");
-        // checks to see if the canvas is supported
-        if (this.bgCanvas.getContext) {
-            this.bgContext = this.bgCanvas.getContext("2d");
-            this.shipContext = this.shipCanvas.getContext("2d");
-            this.mainContext = this.mainCanvas.getContext("2d");
-            // initialize objects to contain their conetext and canvas information
-            Background.prototype.context = this.bgContext;
-            Background.prototype.canvasWidth = this.bgCanvas.width;
-            Background.prototype.canvasHeight = this.bgCanvas.height;
-            Ship.prototype.context = this.shipContext;
-            Ship.prototype.canvasWidth = this.shipCanvas.width;
-            Ship.prototype.canvasHeight = this.shipCanvas.height;
-            Bullet.prototype.context = this.mainContext;
-            Bullet.prototype.canvasWidth = this.mainCanvas.width;
-            Bullet.prototype.canvasHeight = this.mainCanvas.height;
-            //initialize the background object
-            this.background = new Background();
-            this.background.init(0, 0); //set the draw point to 0,0
-            return true;
-        } else {
-            return false;
-        }
-    };
-
-    // start the animation loop
-    this.start = function () {
-        animate();
-    }
-};
-
-
-/* ------ ANIMATION LOOP ------
- * Global function
- * The animation loop calls teh requestAnimationFrame to optimize the game loop.
- * Draws all the game objects
- */
-function animate() {
-    requestAnimFrame(animate);
-    game.background.draw();
-}
 
 window.requestAnimFrame = (function () {
     return window.requestAnimationFrame ||
@@ -355,13 +392,6 @@ window.requestAnimFrame = (function () {
 })();
 
 //initialize the game and start it
-
-var game = new Game();
-
-function init() {
-    if (game.init())
-        game.start();
-}
 
 
 
