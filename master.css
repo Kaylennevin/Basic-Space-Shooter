@@ -1,0 +1,30 @@
+* {
+    /* remove the whitespace */
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    /* set to full screen */
+    width: 100%;
+    height: 100%;
+}
+
+canvas {
+    /* remove the scrollbars */
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    background: transparent;
+}
+
+#background {
+    z-index: -2;
+}
+#main {
+    z-index: -1;
+}
+#ship {
+    z-index: 0;
+}
