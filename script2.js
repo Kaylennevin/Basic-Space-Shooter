@@ -22,8 +22,10 @@ var imageRepo = new function () {
     this.background = new Image();
     this.spaceship = new Image();
     this.bullet = new Image();
+    this.enemyBullet = new Image();
+    this.enemy = new Image();
 
-    var numImages = 3;
+    var numImages = 5;
     var numLoaded = 0;
     /* 
      * function to determine if all the game assets have been loaded
@@ -48,10 +50,21 @@ var imageRepo = new function () {
         imageLoaded();
     }
 
+    this.enemy.onload = function () {
+        imageLoaded();
+    }
+
+    this.enemyBullet.onload = function () {
+        imageLoaded();
+    }
+
+
 
     this.background.src = "images/background.png";
-    this.spaceship.src = "images/shipPlayer.png";
+    this.spaceship.src = "images/shipPlayer2.png";
     this.bullet.src = "images/bulletPlayer.png";
+    this.enemy.src = "images/enemy.png";
+    this.enemyBullet.src = "images/bulletPlayer.png";
 
 
 }
@@ -70,7 +83,7 @@ function Drawable() {
 
         this.x = x;
         this.y = y;
-       
+
         this.width = width;
         this.height = height;
     }
@@ -81,7 +94,7 @@ function Drawable() {
     this.draw = function () {
 
     };
-    this.move = function(){
+    this.move = function () {
 
     };
 }
@@ -115,16 +128,41 @@ function Game() {
             Bullet.prototype.context = this.mainContext;
             Bullet.prototype.canvasWidth = this.mainCanvas.width;
             Bullet.prototype.canvasHeight = this.mainCanvas.height;
+
+            Enemy.prototype.context = this.enemyContext;
+            Enemy.prototype.canvasWidth = this.mainCanvas.width;
+            Enemy.prototype.canvasHeight = this.mainCanvas.height;
+
             //initialize the background object
             this.background = new Background();
             this.background.init(0, 0); //set the draw point to 0,0
             //initialize the ship object
             this.ship = new Ship();
             //set the ship to start middle bottom
-            var shipStartX = this.shipCanvas.width/2 - imageRepo.spaceship.width;
-            var shipStartY = this.shipCanvas.height/4*3 + imageRepo.spaceship.height*2;
-            this.ship.init(shipStartX, shipStartY, 
+            var shipStartX = this.shipCanvas.width / 2 - imageRepo.spaceship.width;
+            var shipStartY = this.shipCanvas.height / 4 * 3 + imageRepo.spaceship.height * 2;
+            this.ship.init(shipStartX, shipStartY,
                 imageRepo.spaceship.width, imageRepo.spaceship.height);
+
+            // initialize the enemy pool object
+            this.enemyPool = new Pool(30);
+            this.enemyPool.init("enemy");
+            var height = imageRepo.enemy.height;
+            var width = imageRepo.enemy.width;
+            var x = 100;
+            var y =-height;
+            var spacer = y * 1.5;
+            for (var i = 1; i <= 18; i++) {
+                this.enemyPool.get(x,y,2);
+                x+= width +25;
+                if (i % 6 == 0) {
+                    x = 100;
+                    y+= spacer
+                }
+            }
+            this.enemyBulletPool = new Pool(50);
+            this.enemyBulletPool.init("enemyBullet");
+
 
             return true;
         } else {
@@ -136,7 +174,7 @@ function Game() {
     this.start = function () {
         this.ship.draw();
         animate();
-        
+
     }
 };
 
@@ -151,6 +189,8 @@ function animate() {
     game.background.draw();
     game.ship.move();
     game.ship.bulletPool.animate();
+    game.enemyPool.animate();
+    game.enemyBulletPool.animate();
 }
 /// ------ OBJECT POOL ------
 /* 
@@ -170,15 +210,31 @@ function Pool(maxSize) {
     var size = maxSize; // max bullet allowed in the pool
     var pool = [];
     // populates the pool with bullet objects 
-    this.init = function () {
-        for (var i = 0; i < size; i++) {
-            //initalize the bullet object
-            var bullet = new Bullet();
-            bullet.init(0, 0, imageRepo.bullet.width, imageRepo.bullet.height);
-            pool[i] = bullet;
+    this.init = function (object) {
+        if (object === "bullet") {
+            for (var i = 0; i < size; i++) {
+                //initalize the bullet object
+                var bullet = new Bullet("bullet");
+                bullet.init(0, 0, imageRepo.bullet.width, imageRepo.bullet.height);
+                pool[i] = bullet;
 
+            }
+        } else if (object === "enemy") {
+            for (var i = 0; i < size; i++) {
+                var enemy = new Enemy();
+                enemy.init(0, 0, imageRepo.enemy.width, imageRepo.enemy.height);
+                pool[i] = enemy;
+            }
+        } else if (object === "enemyBullet") {
+            for (var i = 0; i < size; i++) {
+                enemyBullet.init(0, 0, imageRepo.enemyBullet.width, imageRepo.enemyBullet.height);
+                pool[i] = enemyBullet;
+            }
         }
+
+
     };
+
     // grabs the last item in the list, initalizes it, and pushes it to the front of the array 
     this.get = function (x, y, speed) {
         if (!pool[size - 1].alive) {
@@ -232,7 +288,7 @@ for (code in KEY_CODES) {
     KEY_STATUS[KEY_CODES[code]] = false;
 }
 
-document.onkeydown = function(e) {
+document.onkeydown = function (e) {
     var keyCode = (e.keyCode) ? e.keyCode : e.charCode;
     if (KEY_CODES[keyCode]) {
         e.preventDefault();
@@ -241,7 +297,7 @@ document.onkeydown = function(e) {
 }
 
 
-document.onkeyup = function(e) {
+document.onkeyup = function (e) {
     var keyCode = (e.keyCode) ? e.keyCode : e.charCode;
     if (KEY_CODES[keyCode]) {
         e.preventDefault();
@@ -259,7 +315,7 @@ document.onkeyup = function(e) {
 function Ship() {
     this.speed = 3;
     this.bulletPool = new Pool(30);
-    this.bulletPool.init();
+    this.bulletPool.init("bullet");
 
     var fireRate = 15;
     var counter = 0;
@@ -270,7 +326,7 @@ function Ship() {
     this.move = function () {
         counter++;
         //determine if the action is a move action
-        if (KEY_STATUS.left || KEY_STATUS.right || 
+        if (KEY_STATUS.left || KEY_STATUS.right ||
             KEY_STATUS.down || KEY_STATUS.up) {
             // The ship moved so, erase the current image and redraw to new location
             this.context.clearRect(this.x, this.y, this.width, this.height);
@@ -303,22 +359,79 @@ function Ship() {
     };
     // fires two bullets
     this.fire = function () {
-        this.bulletPool.getTwo(this.x + 6, this.y, 3, this.x + 33, this.y, 3);
+        this.bulletPool.getTwo(this.x - 3, this.y, 3, this.x + 32, this.y, 3);
     };
 }
 Ship.prototype = new Drawable();
 
 
+// ------ ENEMIES ------
 
+function Enemy(){
+    var percentFire = 0.01;
+    var chance = 0;
+    this.alive = false;
 
+    this.spawn = function(x, y, speed) {
+        this.x = x;
+        this.y = y;
+        this.speed = speed;
+        this.speedX = 0;
+        this.speedY = speed;
+        this.alive = true;
+        this.leftEdge = this.x - 90;
+        this.rightEdge = this.x + 90;
+        this.bottomEdge = this.y + 140;
+    };
+
+    this.draw = function() {
+        this.context.clearRect(this.x-1, this.y, this.width+1, this.height);
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.x <= this.leftEdge + this.width){
+            this.speedX = -this.speed;
+        }
+        else if ( this.x >= this.rightEdge + this.width) {
+            this.speedX = -this.speed;
+        }
+        else if (this.y >= this.bottomEdge) {
+            this.speed = 1.5;
+            this.speedY = 0;
+            this.y -= 5;
+            this.speedX = -this.speed;
+        }
+        this.context.drawImage(imageRepo.enemy, this.x, this.y);
+        chance = Math.floor(Math.random()*101);
+        if (chance/100 < percentFire) {
+            this.fire();
+        }
+    };
+
+this.fire = function(){
+    game.enemyBulletPool.get(this.x + this.width /2, this.y + this.height, -2.5)
+}
+
+this.clear = function() {
+    this.x = 0;
+    this.y = 0;
+    this.speed = 0;
+    this.speedX = 0;
+    this.speedY = 0;
+    this.alive = false;
+};
+
+}
+
+Enemy.prototype = new Drawable();
 
 // ------ BULLET ------
 // bullet object which the ship fires. The bullets are drawn on the "main" canvas
 
-function Bullet() {
+function Bullet(object) {
     this.alive = false; // is true if the bullet is currently in use
+    var self = object;
     // sets the bullet value
-    this.spawn = function(x, y, speed) {
+    this.spawn = function (x, y, speed) {
         this.x = x;
         this.y = y;
         this.speed = speed;
@@ -329,13 +442,21 @@ function Bullet() {
      * returns true if the bullet has moved off the screen, indicating that
      * the bullet can now be cleared by the pool, if not then the bullet is drawn
      */
-    this.draw = function() {
-        this.context.clearRect(this.x, this.y, this.width, this.height);
+    this.draw = function () {
+        this.context.clearRect(this.x - 1, this.y - 1, this.width + 1, this.height + 1);
         this.y -= this.speed;
-        if (this.y <= 0 - this.height) {
+        if (self === "bullet" && this.y <= 0 - this.height) {
             return true;
+        } else if (self === "enemyBullet" && this.y >= this.canvasHeight) {
+            return true;
+
         } else {
-            this.context.drawImage(imageRepo.bullet, this.x, this.y);
+            if (self === "bullet") {
+                this.context.drawImage(imageRepo.bullet, this.x, this.y);
+            } else if (self === "enemyBullet") {
+                this.context.drawImage(imageRepo.enemyBullet, this.x, this.y)
+            }
+            return false;
         }
     };
     // resets the bullet value
