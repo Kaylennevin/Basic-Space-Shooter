@@ -129,7 +129,7 @@ function Game() {
             Bullet.prototype.canvasWidth = this.mainCanvas.width;
             Bullet.prototype.canvasHeight = this.mainCanvas.height;
 
-            Enemy.prototype.context = this.enemyContext;
+            Enemy.prototype.context = this.mainContext;
             Enemy.prototype.canvasWidth = this.mainCanvas.width;
             Enemy.prototype.canvasHeight = this.mainCanvas.height;
 
@@ -227,8 +227,9 @@ function Pool(maxSize) {
             }
         } else if (object === "enemyBullet") {
             for (var i = 0; i < size; i++) {
-                enemyBullet.init(0, 0, imageRepo.enemyBullet.width, imageRepo.enemyBullet.height);
-                pool[i] = enemyBullet;
+                var bullet = new Bullet("enemyBullet");
+                bullet.init(0, 0, imageRepo.enemyBullet.width, imageRepo.enemyBullet.height);
+                pool[i] = bullet;
             }
         }
 
@@ -388,7 +389,7 @@ function Enemy(){
         this.context.clearRect(this.x-1, this.y, this.width+1, this.height);
         this.x += this.speedX;
         this.y += this.speedY;
-        if (this.x <= this.leftEdge + this.width){
+        if (this.x <= this.leftEdge){
             this.speedX = -this.speed;
         }
         else if ( this.x >= this.rightEdge + this.width) {
@@ -401,6 +402,7 @@ function Enemy(){
             this.speedX = -this.speed;
         }
         this.context.drawImage(imageRepo.enemy, this.x, this.y);
+
         chance = Math.floor(Math.random()*101);
         if (chance/100 < percentFire) {
             this.fire();
