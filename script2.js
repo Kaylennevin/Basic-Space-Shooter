@@ -64,7 +64,7 @@ var imageRepo = new function () {
     this.spaceship.src = "images/shipPlayer2.png";
     this.bullet.src = "images/bulletPlayer.png";
     this.enemy.src = "images/enemy.png";
-    this.enemyBullet.src = "images/bulletPlayer.png";
+    this.enemyBullet.src = "images/bulletEnemy.png";
 
 
 }
@@ -145,22 +145,22 @@ function Game() {
                 imageRepo.spaceship.width, imageRepo.spaceship.height);
 
             // initialize the enemy pool object
-            this.enemyPool = new Pool(30);
+            this.enemyPool = new Pool(36);
             this.enemyPool.init("enemy");
             var height = imageRepo.enemy.height;
             var width = imageRepo.enemy.width;
             var x = 100;
             var y =-height;
             var spacer = y * 1.5;
-            for (var i = 1; i <= 18; i++) {
+            for (var i = 1; i <= 36; i++) {
                 this.enemyPool.get(x,y,2);
                 x+= width +25;
-                if (i % 6 == 0) {
+                if (i % 12 == 0) {
                     x = 100;
                     y+= spacer
                 }
             }
-            this.enemyBulletPool = new Pool(50);
+            this.enemyBulletPool = new Pool(120);
             this.enemyBulletPool.init("enemyBullet");
 
 
@@ -377,11 +377,11 @@ function Enemy(){
         this.x = x;
         this.y = y;
         this.speed = speed;
-        this.speedX = 0;
+        this.speedX = 2;
         this.speedY = speed;
         this.alive = true;
         this.leftEdge = this.x - 90;
-        this.rightEdge = this.x + 90;
+        this.rightEdge = this.x + 180;
         this.bottomEdge = this.y + 140;
     };
 
@@ -389,28 +389,29 @@ function Enemy(){
         this.context.clearRect(this.x-1, this.y, this.width+1, this.height);
         this.x += this.speedX;
         this.y += this.speedY;
+
         if (this.x <= this.leftEdge){
-            this.speedX = -this.speed;
+            this.speedX = this.speed;
         }
         else if ( this.x >= this.rightEdge + this.width) {
             this.speedX = -this.speed;
         }
         else if (this.y >= this.bottomEdge) {
-            this.speed = 1.5;
+            this.speed = 2;
             this.speedY = 0;
             this.y -= 5;
             this.speedX = -this.speed;
         }
         this.context.drawImage(imageRepo.enemy, this.x, this.y);
 
-        chance = Math.floor(Math.random()*101);
-        if (chance/100 < percentFire) {
+        chance = Math.floor(Math.random()*275);
+        if (chance/20 < percentFire) {
             this.fire();
         }
     };
 
 this.fire = function(){
-    game.enemyBulletPool.get(this.x + this.width /2, this.y + this.height, -2.5)
+    game.enemyBulletPool.get(this.x + this.width/2 , this.y + this.height, -5.5)
 }
 
 this.clear = function() {
@@ -482,7 +483,7 @@ Bullet.prototype = new Drawable();
  * and gives the illusion of the background moving by panning tha image.
  */
 function Background() {
-    this.speed = 1; // redefine speed for panning
+    this.speed = 24; // redefine speed for panning
     this.draw = function () {
         //pan background
         //moving the y position of the background so that it pans from top to bottom
