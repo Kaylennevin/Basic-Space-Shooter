@@ -90,12 +90,19 @@ function Drawable() {
     this.speed = 0;
     this.canvasWidth = 0;
     this.canvasHeight = 0;
+    this.collidableWith = "";
+    this.isColliding = false;
+    this.type = "";
 
     this.draw = function () {
 
     };
     this.move = function () {
 
+    };
+
+    this.isCollidableWith = function (object) {
+        return (this.collidableWith === object.type);
     };
 }
 
@@ -150,19 +157,25 @@ function Game() {
             var height = imageRepo.enemy.height;
             var width = imageRepo.enemy.width;
             var x = 100;
-            var y =-height;
+            var y = -height;
             var spacer = y * 1.5;
             for (var i = 1; i <= 36; i++) {
-                this.enemyPool.get(x,y,2);
-                x+= width +25;
+                this.enemyPool.get(x, y, 2);
+                x += width + 25;
                 if (i % 12 == 0) {
                     x = 100;
-                    y+= spacer
+                    y += spacer
                 }
             }
             this.enemyBulletPool = new Pool(120);
             this.enemyBulletPool.init("enemyBullet");
 
+            this.quadTree = new QuadTree({
+                x: 0,
+                y: 0,
+                width: this.mainCanvas.width,
+                height: this.mainCanvas.height
+            });
 
             return true;
         } else {
@@ -185,6 +198,17 @@ function Game() {
  * Draws all the game objects
  */
 function animate() {
+
+    // insert objects into quadtree
+    game.quadTree.clear();
+    game.quadTree.insert(game.ship);
+    game.quadTree.insert(game.ship.bulletPool.getPool());
+    game.quadTree.insert(game.enemyPool.getPool());
+    game.quadTree.insert(game.enemyBulletPool.getPool());
+
+    detectCollision();
+
+    // Animate game objects
     requestAnimFrame(animate);
     game.background.draw();
     game.ship.move();
@@ -192,6 +216,11 @@ function animate() {
     game.enemyPool.animate();
     game.enemyBulletPool.animate();
 }
+
+
+
+
+
 /// ------ OBJECT POOL ------
 /* 
  * When the pool is initalized, it populates an array with empty bullet objects
@@ -209,32 +238,53 @@ function animate() {
 function Pool(maxSize) {
     var size = maxSize; // max bullet allowed in the pool
     var pool = [];
+
+    this.getPool = function () {
+        var obj = [];
+        for (var i = 0; i < size; i++) {
+            if (pool[i].alive) {
+                obj.push(pool[i]);
+            }
+        }
+        return obj;
+    }
+
     // populates the pool with bullet objects 
     this.init = function (object) {
-        if (object === "bullet") {
+        if (object == "bullet") {
             for (var i = 0; i < size; i++) {
                 //initalize the bullet object
                 var bullet = new Bullet("bullet");
                 bullet.init(0, 0, imageRepo.bullet.width, imageRepo.bullet.height);
+
+                bullet.collidableWith = "enemy";
+                bullet.type = "bullet";
+
                 pool[i] = bullet;
 
             }
-        } else if (object === "enemy") {
+        } else if (object == "enemy") {
             for (var i = 0; i < size; i++) {
                 var enemy = new Enemy();
                 enemy.init(0, 0, imageRepo.enemy.width, imageRepo.enemy.height);
                 pool[i] = enemy;
             }
-        } else if (object === "enemyBullet") {
+        } else if (object == "enemyBullet") {
             for (var i = 0; i < size; i++) {
                 var bullet = new Bullet("enemyBullet");
                 bullet.init(0, 0, imageRepo.enemyBullet.width, imageRepo.enemyBullet.height);
+
+                bullet.collidableWith = "ship";
+                bullet.type = "enemyBullet";
+
                 pool[i] = bullet;
             }
         }
 
 
     };
+
+
 
     // grabs the last item in the list, initalizes it, and pushes it to the front of the array 
     this.get = function (x, y, speed) {
@@ -321,6 +371,9 @@ function Ship() {
     var fireRate = 15;
     var counter = 0;
 
+    this.collidableWith = "enemyBullet";
+    this.type = "ship";
+
     this.draw = function () {
         this.context.drawImage(imageRepo.spaceship, this.x, this.y);
     };
@@ -351,9 +404,11 @@ function Ship() {
                     this.y = this.canvasHeight - this.height;
             }
             //finish by redrawing the ship
-            this.draw();
+            if (!this.isColliding) {
+                this.draw();
+            }
         }
-        if (KEY_STATUS.space && counter >= fireRate) {
+        if (KEY_STATUS.space && counter >= fireRate && !this.isColliding) {
             this.fire();
             counter = 0;
         }
@@ -368,12 +423,15 @@ Ship.prototype = new Drawable();
 
 // ------ ENEMIES ------
 
-function Enemy(){
+function Enemy() {
     var percentFire = 0.01;
     var chance = 0;
     this.alive = false;
 
-    this.spawn = function(x, y, speed) {
+    this.collidableWith = "bullet";
+    this.type = "enemy";
+
+    this.spawn = function (x, y, speed) {
         this.x = x;
         this.y = y;
         this.speed = speed;
@@ -385,43 +443,53 @@ function Enemy(){
         this.bottomEdge = this.y + 140;
     };
 
-    this.draw = function() {
-        this.context.clearRect(this.x-1, this.y, this.width+1, this.height);
+    this.draw = function () {
+        this.context.clearRect(this.x - 1, this.y, this.width + 1, this.height);
         this.x += this.speedX;
         this.y += this.speedY;
 
-        if (this.x <= this.leftEdge){
+        if (this.x <= this.leftEdge) {
             this.speedX = this.speed;
-        }
-        else if ( this.x >= this.rightEdge + this.width) {
+        } else if (this.x >= this.rightEdge + this.width) {
             this.speedX = -this.speed;
-        }
-        else if (this.y >= this.bottomEdge) {
+        } else if (this.y >= this.bottomEdge) {
             this.speed = 2;
             this.speedY = 0;
             this.y -= 5;
             this.speedX = -this.speed;
         }
+
+        if (!this.isColliding) {
         this.context.drawImage(imageRepo.enemy, this.x, this.y);
 
-        chance = Math.floor(Math.random()*275);
-        if (chance/20 < percentFire) {
+        chance = Math.floor(Math.random() * 275);
+        if (chance / 20 < percentFire) {
             this.fire();
         }
+        return false;
+     }
+            else {
+                return true;
+            }
+        
+         
+
+         
     };
 
-this.fire = function(){
-    game.enemyBulletPool.get(this.x + this.width/2 , this.y + this.height, -5.5)
-}
+    this.fire = function () {
+        game.enemyBulletPool.get(this.x + this.width / 2, this.y + this.height, -5.5)
+    }
 
-this.clear = function() {
-    this.x = 0;
-    this.y = 0;
-    this.speed = 0;
-    this.speedX = 0;
-    this.speedY = 0;
-    this.alive = false;
-};
+    this.clear = function () {
+        this.x = 0;
+        this.y = 0;
+        this.speed = 0;
+        this.speedX = 0;
+        this.speedY = 0;
+        this.alive = false;
+        this.isColliding = false;
+    };
 
 }
 
@@ -448,17 +516,23 @@ function Bullet(object) {
     this.draw = function () {
         this.context.clearRect(this.x - 1, this.y - 1, this.width + 1, this.height + 1);
         this.y -= this.speed;
-        if (self === "bullet" && this.y <= 0 - this.height) {
+
+        if (this.isColliding) {
             return true;
+        } else if (self === "bullet" && this.y <= 0 - this.height) {
+            return true;
+
         } else if (self === "enemyBullet" && this.y >= this.canvasHeight) {
             return true;
 
         } else {
+
             if (self === "bullet") {
                 this.context.drawImage(imageRepo.bullet, this.x, this.y);
             } else if (self === "enemyBullet") {
                 this.context.drawImage(imageRepo.enemyBullet, this.x, this.y)
             }
+
             return false;
         }
     };
@@ -468,14 +542,206 @@ function Bullet(object) {
         this.y = 0;
         this.speed = 0;
         this.alive = false;
+        this.isColliding = false;
     };
 
 }
 Bullet.prototype = new Drawable();
 
+//------ SPATIAL PARTITIONING ------
+function QuadTree(boundbox, lvl) {
+    var maxObjects = 10;
+    this.bounds = boundbox || {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+    };
+    var objects = [];
+    this.nodes = [];
+    var level = lvl || 0;
+    var maxLevels = 5;
+    //clears the quad tree and all objects
 
+    this.clear = function () {
+        objects = [];
 
+        for (var i = 0; i < this.nodes.length; i++) {
+            this.nodes[i].clear();
+        }
 
+        this.nodes = [];
+
+    };
+
+    // get all objects in the quad tree
+
+    this.getAllObjects = function (returnedObjects) {
+        for (var i = 0; i < this.nodes.length; i++) {
+            this.nodes[i].getAllObjects(returnedObjects);
+        }
+
+        for (var i = 0, len = objects.length; i < len; i++) {
+            returnedObjects.push(objects[i]);
+        }
+
+        return returnedObjects;
+
+    };
+    // return all objects that can collide
+
+    this.findObjects = function (returnedObjects, obj) {
+        if (typeof obj === "undefined") {
+            console.log("UNDEFINED OBJECT");
+            return;
+        }
+
+        var index = this.getIndex(obj);
+        if (index != -1 && this.nodes.length) {
+            this.nodes[index].findObjects(returnedObjects, obj);
+        }
+
+        for (var i = 0, len = objects.length; i < len; i++) {
+            returnedObjects.push(objects[i]);
+        }
+        return returnedObjects;
+    };
+
+    /*
+   insert objects into the quad tree. If the tree goes beyond capacity, then
+   all objects will be split into their corresponding nodes
+ */
+    this.insert = function (obj) {
+        if (typeof obj === "undefined") {
+            return;
+
+        }
+
+        if (obj instanceof Array) {
+            for (var i = 0, len = obj.length; i < len; i++) {
+                this.insert(obj[i]);
+            }
+            return;
+        }
+
+        if (this.nodes.length) {
+            var index = this.getIndex(obj);
+            // only add an object to the sub node if it can fit within one
+            if (index != -1) {
+                this.nodes[index].insert(obj);
+                return;
+            }
+        }
+
+        objects.push(obj);
+
+        //prevent infinite splitting
+        if (objects.length > maxObjects && level < maxLevels) {
+            if (this.nodes[0] == null) {
+                this.split();
+            }
+            var i = 0;
+            while (i < objects.length) {
+                var index = this.getIndex(objects[i]);
+                if (index != -1) {
+                    this.nodes[index].insert((objects.splice(i, 1))[0]);
+                } else {
+                    i++;
+                }
+            }
+        }
+    };
+
+    /*
+     * Determine which node the object belongs to. If -1 then
+     * the object cannot completey fit within a node and is part 
+     * of a current node
+     */
+
+    this.getIndex = function (obj) {
+        var index = -1;
+        var verticalMidpoint = this.bounds.x + this.bounds.width / 2;
+        var horizontalMidpoint = this.bounds.y + this.bounds.height / 2;
+        // object can completely fit within the top quadrant
+        var topQuadrant = (obj.y < horizontalMidpoint &&
+            obj.y + obj.height < horizontalMidpoint);
+        // object can fit completely within the bottom quadrant
+        var bottomQuadrant = (obj.y > horizontalMidpoint);
+        // object can fit completely within the left quadrant
+        if (obj.x < verticalMidpoint &&
+            obj.x + obj.width < verticalMidpoint) {
+            if (topQuadrant) {
+                index = 1;
+            } else if (bottomQuadrant) {
+                index = 2;
+            }
+        }
+        // object can completely fit within the right quadrants
+        else if (obj.x > verticalMidpoint) {
+            if (topQuadrant) {
+                index = 0;
+            } else if (bottomQuadrant) {
+                index = 3;
+            }
+        }
+
+        return index;
+    };
+
+    // splits nodes into 4 sub nodes
+
+    this.split = function () {
+        var subWidth = (this.bounds.width / 2) | 0;
+        var subHeight = (this.bounds.height / 2) | 0;
+        this.nodes[0] = new QuadTree({
+            x: this.bounds.x + subWidth,
+            y: this.bounds.y,
+            width: subWidth,
+            height: subHeight
+        }, level + 1);
+        this.nodes[1] = new QuadTree({
+            x: this.bounds.x,
+            y: this.bounds.y,
+            width: subWidth,
+            height: subHeight
+        }, level + 1);
+        this.nodes[2] = new QuadTree({
+            x: this.bounds.x,
+            y: this.bounds.y + subHeight,
+            width: subWidth,
+            height: subHeight
+        }, level + 1);
+        this.nodes[3] = new QuadTree({
+            x: this.bounds.x + subWidth,
+            y: this.bounds.y + subHeight,
+            width: subWidth,
+            height: subHeight
+        }, level + 1);
+    };
+
+}
+
+/// ------ DETECT COLLISIONS ------
+function detectCollision() {
+    var objects = [];
+    game.quadTree.getAllObjects(objects);
+    for (var x = 0, len = objects.length; x < len; x++) {
+        game.quadTree.findObjects(obj = [], objects[x]);
+
+        for (y = 0, length = obj.length; y < length; y++) {
+
+            // DETECT COLLISION ALGORITHM
+            if (objects[x].collidableWith === obj[y].type &&
+                (objects[x].x < obj[y].x + obj[y].width &&
+                    objects[x].x + objects[x].width > obj[y].x &&
+                    objects[x].y < obj[y].y + obj[y].height &&
+                    objects[x].y + objects[x].height > obj[y].y)) {
+                objects[x].isColliding = true;
+                obj[y].isColliding = true;
+            }
+        }
+    }
+};
 
 /* ------ BACKGROUND OBJECT ------
  * this function is used to create a background object that will become a child
@@ -483,7 +749,7 @@ Bullet.prototype = new Drawable();
  * and gives the illusion of the background moving by panning tha image.
  */
 function Background() {
-    this.speed = 24; // redefine speed for panning
+    this.speed = 2; // redefine speed for panning
     this.draw = function () {
         //pan background
         //moving the y position of the background so that it pans from top to bottom
