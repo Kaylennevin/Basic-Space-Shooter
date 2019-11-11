@@ -140,6 +140,8 @@ function Game() {
             Enemy.prototype.canvasWidth = this.mainCanvas.width;
             Enemy.prototype.canvasHeight = this.mainCanvas.height;
 
+            this.playerScore = 0;
+
             //initialize the background object
             this.background = new Background();
             this.background.init(0, 0); //set the draw point to 0,0
@@ -215,6 +217,8 @@ function animate() {
     game.ship.bulletPool.animate();
     game.enemyPool.animate();
     game.enemyBulletPool.animate();
+
+    document.getElementById("score").innerHTML = game.playerScore;
 }
 
 
@@ -440,7 +444,7 @@ function Enemy() {
         this.alive = true;
         this.leftEdge = this.x - 90;
         this.rightEdge = this.x + 180;
-        this.bottomEdge = this.y + 140;
+        this.bottomEdge = this.y + 190;
     };
 
     this.draw = function () {
@@ -469,6 +473,7 @@ function Enemy() {
         return false;
      }
             else {
+                game.playerScore += 45;
                 return true;
             }
         

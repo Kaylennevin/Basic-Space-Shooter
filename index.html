@@ -12,6 +12,12 @@
         <canvas id="main" width="980" height="800"></canvas>
         <!-- canvas controlling the player ( limited player movement 1/4 of screen) -->
         <canvas id="ship" width="980" height="800"></canvas>
+        <div class = "score">
+            SCORE:  <span id = "score"></span>
+        </div>
+        <div class = "game-over" id = "game-over"><p>
+            GAME OVER <span onclick="game.restart()">Restart</span>
+        </p></div>
 
     <script type="text/javascript" src="script2.js"></script>
     </body>
