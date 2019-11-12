@@ -41,14 +41,14 @@ canvas {
 }
 .game-over {
     position: absolute;
-    top: 25%;
-    left: 25%;
+    top: 35%;
+    left: 13%;
     color: rgb(255, 0, 0);
     font-family: Helvetica, sans-serif;
     font-size: 55px;
     cursor: default;
     display: none;
-    text-align: center
+    
    
 }
 

@@ -215,7 +215,7 @@ function Game() {
     // start the animation loop
     this.start = function () {
         this.ship.draw();
-        animate();
+        animate();  
         
 
     };
