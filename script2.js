@@ -3,6 +3,9 @@ var canvas = document.getElementById("background");
 var ctx = canvas.getContext("2d");
 const GAME_WIDTH = 980;
 const GAME_HEIGHT = 800;
+
+
+
 ctx.imageSmoothingEnabled = false;
 
 
@@ -156,19 +159,43 @@ function Game() {
             // initialize the enemy pool object
             this.enemyPool = new Pool(36);
             this.enemyPool.init("enemy");
-            var height = imageRepo.enemy.height;
-            var width = imageRepo.enemy.width;
-            var x = 100;
-            var y = -height;
-            var spacer = y * 1.5;
-            for (var i = 1; i <= 36; i++) {
-                this.enemyPool.get(x, y, 2);
-                x += width + 25;
-                if (i % 12 == 0) {
-                    x = 100;
-                    y += spacer
+
+            this.spawnWave = function () {
+                var height = imageRepo.enemy.height;
+                var width = imageRepo.enemy.width;
+                var x = 100;
+                var y = -height;
+                var spacer = y * 1.5;
+                for (var i = 1; i <= 36; i++) {
+                    this.enemyPool.get(x, y, 2);
+                    x += width + 25;
+                    if (i % 12 == 0) {
+                        x = 100;
+                        y += spacer
+                    }
                 }
             }
+
+            this.gameOver = function () {
+                document.getElementById("game-over").style.display = "block";
+            };
+
+            this.restart = function () {
+                document.getElementById('game-over').style.display = "none";
+                this.bgContext.clearRect(0, 0, this.bgCanvas.width, this.bgCanvas.height);
+                this.shipContext.clearRect(0, 0, this.shipCanvas.width, this.shipCanvas.height);
+                this.mainContext.clearRect(0, 0, this.mainCanvas.width, this.mainCanvas.height);
+                this.quadTree.clear();
+                this.background.init(0, 0);
+                this.ship.init(this.shipStartX, this.shipStartY,
+                    imageRepo.spaceship.width, imageRepo.spaceship.height);
+                this.enemyPool.init("enemy");
+                this.spawnWave();
+                this.enemyBulletPool.init("enemyBullet");
+                this.playerScore = 0;
+
+                this.start();
+            };
             this.enemyBulletPool = new Pool(120);
             this.enemyBulletPool.init("enemyBullet");
 
@@ -189,8 +216,9 @@ function Game() {
     this.start = function () {
         this.ship.draw();
         animate();
+        
 
-    }
+    };
 };
 
 
@@ -211,14 +239,24 @@ function animate() {
     detectCollision();
 
     // Animate game objects
+
+    document.getElementById("score").innerHTML = game.playerScore;
+
+    if (game.enemyPool.getPool().length === 0) {
+        game.spawnWave();
+
+}
+
+if (game.ship.alive){ 
     requestAnimFrame(animate);
+
     game.background.draw();
     game.ship.move();
     game.ship.bulletPool.animate();
     game.enemyPool.animate();
     game.enemyBulletPool.animate();
+   }
 
-    document.getElementById("score").innerHTML = game.playerScore;
 }
 
 
@@ -371,7 +409,7 @@ function Ship() {
     this.speed = 3;
     this.bulletPool = new Pool(30);
     this.bulletPool.init("bullet");
-
+    this.alive = true;
     var fireRate = 15;
     var counter = 0;
 
@@ -411,11 +449,17 @@ function Ship() {
             if (!this.isColliding) {
                 this.draw();
             }
+            
+            else {
+                this.alive =  false;
+                game.gameOver();
+            }
         }
         if (KEY_STATUS.space && counter >= fireRate && !this.isColliding) {
             this.fire();
             counter = 0;
         }
+      
     };
     // fires two bullets
     this.fire = function () {
@@ -428,9 +472,10 @@ Ship.prototype = new Drawable();
 // ------ ENEMIES ------
 
 function Enemy() {
-    var percentFire = 0.01;
+
     var chance = 0;
     this.alive = false;
+    var percentFire = 0.01;
 
     this.collidableWith = "bullet";
     this.type = "enemy";
@@ -464,27 +509,29 @@ function Enemy() {
         }
 
         if (!this.isColliding) {
-        this.context.drawImage(imageRepo.enemy, this.x, this.y);
+            this.context.drawImage(imageRepo.enemy, this.x, this.y);
 
-        chance = Math.floor(Math.random() * 275);
-        if (chance / 20 < percentFire) {
-            this.fire();
-        }
-        return false;
-     }
-            else {
-                game.playerScore += 45;
-                return true;
+            chance = Math.floor(Math.random() * 275);
+            if (chance / 20 < percentFire) {
+                this.fire();
             }
-        
-         
+            return false;
+        } else {
+            game.playerScore += 45;
+            return true;
+        }
 
-         
+
+
+
     };
 
     this.fire = function () {
         game.enemyBulletPool.get(this.x + this.width / 2, this.y + this.height, -5.5)
     }
+
+
+
 
     this.clear = function () {
         this.x = 0;

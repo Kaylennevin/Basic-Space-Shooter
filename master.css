@@ -9,6 +9,7 @@ body {
     /* set to full screen */
     width: 100%;
     height: 100%;
+    
 }
 
 canvas {
@@ -40,19 +41,28 @@ canvas {
 }
 .game-over {
     position: absolute;
-    top: 100px;
-    left: 210px;
-    color: #FF7F00;
+    top: 25%;
+    left: 25%;
+    color: rgb(255, 0, 0);
     font-family: Helvetica, sans-serif;
-    font-size: 30px;
+    font-size: 55px;
     cursor: default;
     display: none;
+    text-align: center
+   
+}
+
+.game-over p {
+    display: inline-block;
+    font-size: 75px;
 }
 .game-over span {
-    font-size: 20px;
+    font-size: 30px;
     cursor: pointer;
     position: relative;
     left: 50px;
+ 
+   
 }
 .game-over span:hover {
     color: #FFD700;
