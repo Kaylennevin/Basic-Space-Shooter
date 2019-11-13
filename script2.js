@@ -30,6 +30,7 @@ var imageRepo = new function () {
 
     var numImages = 5;
     var numLoaded = 0;
+
     /* 
      * function to determine if all the game assets have been loaded
      * if they are all loaded then initialize the game
@@ -406,8 +407,8 @@ document.onkeyup = function (e) {
  */
 
 function Ship() {
-    this.speed = 3;
-    this.bulletPool = new Pool(30);
+    this.speed = 8;
+    this.bulletPool = new Pool(50);
     this.bulletPool.init("bullet");
     this.alive = true;
     var fireRate = 15;
@@ -432,15 +433,15 @@ function Ship() {
                 this.x -= this.speed
                 if (this.x <= 0) // keep the player on the screen
                     this.x = 0;
-            } else if (KEY_STATUS.right) {
+            } if (KEY_STATUS.right) {
                 this.x += this.speed
                 if (this.x >= this.canvasWidth - this.width)
                     this.x = this.canvasWidth - this.width;
-            } else if (KEY_STATUS.up) {
+            } if (KEY_STATUS.up) {
                 this.y -= this.speed
                 if (this.y <= this.canvasHeight / 4 * 3)
                     this.y = this.canvasHeight / 4 * 3;
-            } else if (KEY_STATUS.down) {
+            }  if (KEY_STATUS.down) {
                 this.y += this.speed
                 if (this.y >= this.canvasHeight - this.height)
                     this.y = this.canvasHeight - this.height;
@@ -463,7 +464,7 @@ function Ship() {
     };
     // fires two bullets
     this.fire = function () {
-        this.bulletPool.getTwo(this.x - 3, this.y, 3, this.x + 32, this.y, 3);
+        this.bulletPool.getTwo(this.x - 3, this.y, 10, this.x + 32, this.y, 10);
     };
 }
 Ship.prototype = new Drawable();
@@ -475,7 +476,7 @@ function Enemy() {
 
     var chance = 0;
     this.alive = false;
-    var percentFire = 0.01;
+    var percentFire = 0.15;
 
     this.collidableWith = "bullet";
     this.type = "enemy";
@@ -485,11 +486,11 @@ function Enemy() {
         this.y = y;
         this.speed = speed;
         this.speedX = 2;
-        this.speedY = speed;
+        this.speedY = 1;
         this.alive = true;
         this.leftEdge = this.x - 90;
         this.rightEdge = this.x + 180;
-        this.bottomEdge = this.y + 190;
+        this.bottomEdge = this.y + 390;
     };
 
     this.draw = function () {
@@ -502,9 +503,9 @@ function Enemy() {
         } else if (this.x >= this.rightEdge + this.width) {
             this.speedX = -this.speed;
         } else if (this.y >= this.bottomEdge) {
-            this.speed = 2;
+            this.speed = 3;
             this.speedY = 0;
-            this.y -= 5;
+            this.y -= 1;
             this.speedX = -this.speed;
         }
 
@@ -527,7 +528,7 @@ function Enemy() {
     };
 
     this.fire = function () {
-        game.enemyBulletPool.get(this.x + this.width / 2, this.y + this.height, -5.5)
+        game.enemyBulletPool.get(this.x + this.width / 2, this.y + this.height, -11)
     }
 
 
@@ -801,7 +802,7 @@ function detectCollision() {
  * and gives the illusion of the background moving by panning tha image.
  */
 function Background() {
-    this.speed = 2; // redefine speed for panning
+    this.speed = 7; // redefine speed for panning
     this.draw = function () {
         //pan background
         //moving the y position of the background so that it pans from top to bottom
@@ -833,17 +834,11 @@ window.requestAnimFrame = (function () {
         };
 })();
 
-//initialize the game and start it
 
 
 
 
-// var FPS = 30;
-// setInterval(function () {
-//     //update();
-//     draw();
-//      //requestAnimationFrame();
-// }, 1000 / FPS);
 
 
+///References
 ///http://blog.sklambert.com/html5-canvas-game-the-player-ship/
