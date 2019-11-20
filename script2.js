@@ -838,7 +838,3 @@ window.requestAnimFrame = (function () {
 
 
 
-
-
-///References
-///http://blog.sklambert.com/html5-canvas-game-the-player-ship/
